@@ -38,6 +38,7 @@ as_eer_category <- function(x) {
 
 as_genetic_result <- \(x) factor(x, levels = c("Positive", "Negative"))
 as_sex <- \(x) factor(x, levels = c("Male", "Female"))
+as_onset_category <- \(x) factor(x, levels = c("Spinal", "Bulbar", "Respiratory", "Generalized"))
 as_vital_status <- \(x) factor(x, levels = c("Alive", "Deceased"))
 as_yesno_category <- \(x) factor(x, levels = c("Sí", "No"))
 
@@ -49,6 +50,16 @@ demographics_data <- read_csv(demographics_data_path) |>
         across(eer_category, as_eer_category),
         across(final_diagnosis, as_als_diagnosis),
         across(gold_coast_crit_yn, as_yesno_category),
+        site_of_onset = as_onset_category(case_when(
+        (
+            !is.na(als_symp_bulbar) +
+            !is.na(als_symp_spinal) +
+            !is.na(als_symp_resp)
+        ) > 1 ~ "Generalized",
+            !is.na(als_symp_bulbar) ~ "Bulbar",
+            !is.na(als_symp_spinal) ~ "Spinal",
+            !is.na(als_symp_resp) ~ "Respiratory"
+        )),
         diagnostic_delay_yrs = age_diagnosis - age_onset
     )
 

@@ -63,6 +63,21 @@ ggsave(
 
 baseline_data |>
     filter(age >= age_onset) |>
+    with(survfit2(Surv(age-age_onset, status == "Deceased") ~ site_of_onset)) |>
+    ggsurvfit() +
+    scale_ggsurvfit() +
+    add_confidence_interval() +
+    add_legend_title("Categoría de inicio") +
+    add_pvalue("annotation") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+ggsave(
+    file.path(output_dir, "survival-by-site_of_onset.png"),
+    bg = "white", width = 10, height = 7, dpi = 300
+)
+
+baseline_data |>
+    filter(age >= age_onset) |>
     with(survfit2(Surv(age-age_onset, status == "Deceased") ~ eer_category)) |>
     ggsurvfit() +
     scale_ggsurvfit() +

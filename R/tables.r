@@ -9,7 +9,8 @@ dir.create(output_dir, showWarnings = FALSE)
 
 baseline_data |>
     select(
-        sex, age_onset, diagnostic_delay_yrs, final_diagnosis,
+        sex, age_onset, diagnostic_delay_yrs,
+        site_of_onset, final_diagnosis,
         eer_category, gold_coast_crit_yn,
         baseline_deltafs, progression_category,
         treated_riluzole
@@ -27,7 +28,8 @@ baseline_genetics |>
 baseline_data |>
     select(
         c9_status, age_onset, diagnostic_delay_yrs,
-        final_diagnosis, eer_category, gold_coast_crit_yn,
+        site_of_onset, final_diagnosis,
+        eer_category, gold_coast_crit_yn,
         baseline_deltafs, progression_category
     ) |>
     tbl_summary(by = "c9_status", missing = "no") |>
@@ -38,7 +40,8 @@ baseline_data |>
 baseline_data |>
     select(
         sod1_status, age_onset, diagnostic_delay_yrs,
-        final_diagnosis, eer_category, gold_coast_crit_yn,
+        site_of_onset, final_diagnosis,
+        eer_category, gold_coast_crit_yn,
         baseline_deltafs, progression_category,
         treated_tofersen
     ) |>
