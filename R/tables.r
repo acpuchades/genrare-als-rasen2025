@@ -4,7 +4,7 @@ library(here)
 
 source("R/data.r")
 
-output_dir <- here("output")
+output_dir <- here("output", "tables")
 dir.create(output_dir, showWarnings = FALSE)
 
 baseline_data |>

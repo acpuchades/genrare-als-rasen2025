@@ -11,7 +11,7 @@ source("R/data.r")
 theme_color_primary <- "#143771"
 theme_color_secondary <- "#4E5F68"
 
-output_dir <- here("output")
+output_dir <- here("output", "figures")
 dir.create(output_dir, showWarnings = FALSE)
 
 baseline_data |>

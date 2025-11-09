@@ -4,13 +4,14 @@ library(janitor)
 library(readr)
 library(stringr)
 
-alsfrs_data_path <- here("data", "02_sen2025_alsfrs.csv")
-cognitive_data_path <- here("data", "06_sen2025_cognitive.csv")
-demographics_data_path <- here("data", "01_sen2025_basico_mod.csv")
-genetics_data_path <- here("data", "10_sen2025_genet.csv")
-kings_data_path <- here("data", "04_sen2025_kings.csv")
-niv_data_path <- here("data", "11_sen2025_ventilation.csv")
-treatment_data_path <- here("data", "08_sen2025_trmnt.csv")
+data_dir <- here("data")
+alsfrs_data_path <- file.path(data_dir, "02_sen2025_alsfrs.csv")
+cognitive_data_path <- file.path(data_dir, "06_sen2025_cognitive.csv")
+demographics_data_path <- file.path(data_dir, "01_sen2025_basico_mod.csv")
+genetics_data_path <- file.path(data_dir, "10_sen2025_genet.csv")
+kings_data_path <- file.path(data_dir, "04_sen2025_kings.csv")
+niv_data_path <- file.path(data_dir, "11_sen2025_ventilation.csv")
+treatment_data_path <- file.path(data_dir, "08_sen2025_trmnt.csv")
 
 as_als_diagnosis <- function(x) {
     x |>
