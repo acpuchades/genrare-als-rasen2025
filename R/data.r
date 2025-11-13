@@ -28,20 +28,36 @@ as_eer_category <- function(x) {
     x |>
         str_remove(" \\([^)]*\\)") |>
         str_replace("laboratory results supported", "lab supported") |>
-        factor(levels = c(
-                   "Definite ALS",
-                   "Probable ALS",
-                   "Probable ALS, lab supported",
-                   "Possible ALS",
-                   "Not meeting criteria"
-               ))
+        factor(
+            levels = c(
+                "Definite ALS",
+                "Probable ALS",
+                "Probable ALS, lab supported",
+                "Possible ALS",
+                "Not meeting criteria"
+            )
+        )
 }
 
-as_genetic_result <- \(x) factor(x, levels = c("Positive", "Negative"))
-as_sex <- \(x) factor(x, levels = c("Male", "Female"))
-as_onset_category <- \(x) factor(x, levels = c("Spinal", "Bulbar", "Respiratory", "Generalized"))
-as_vital_status <- \(x) factor(x, levels = c("Alive", "Deceased"))
-as_yesno_category <- \(x) factor(x, levels = c("Sí", "No"))
+as_genetic_result <- function(x) {
+  factor(x, levels = c("Negative", "Positive"))
+}
+
+as_sex <- function(x) {
+  factor(x, levels = c("Male", "Female"))
+}
+
+as_onset_category <- function(x) {
+  factor(x, levels = c("Spinal", "Bulbar", "Respiratory", "Generalized"))
+}
+
+as_vital_status <- function(x) {
+  factor(x, levels = c("Alive", "Deceased"))
+}
+
+as_yesno_category <- function(x) {
+  factor(x, levels = c("Sí", "No"))
+}
 
 demographics_data <- read_csv(demographics_data_path) |>
     clean_names() |>
@@ -102,7 +118,7 @@ baseline_alsfrs <- alsfrs_data |>
             baseline_deltafs < 0.5 ~ "SP",
             baseline_deltafs |> between(0.5, 1) ~ "NP",
             baseline_deltafs > 1 ~ "FP"
-        ) |> factor(levels = c("NP", "SP", "FP"))
+        ) |> factor(levels = c("SP", "NP", "FP"))
     )
 
 baseline_genetics <- genetics_data |>
@@ -134,13 +150,25 @@ baseline_genetics <- genetics_data |>
     )
 
 baseline_treatment <- treatment_data |>
-    summarize(
+  summarize(
         treated_riluzole = any(treat_type == "Riluzole", na.rm = TRUE),
         treated_tofersen = any(treat_type == "Tofersen", na.rm = TRUE),
+        riluzole_start = min(med_start_age[which(treat_type == "Riluzole")]),
+        tofersen_start = min(med_start_age[which(treat_type == "Tofersen")]),
         .by = record_id
     )
 
 baseline_data <- demographics_data |>
-    left_join(baseline_alsfrs, by = "record_id") |>
-    left_join(baseline_genetics, by = "record_id") |>
-    left_join(baseline_treatment, by = "record_id")
+  left_join(baseline_alsfrs, by = "record_id") |>
+  left_join(baseline_genetics, by = "record_id") |>
+  left_join(baseline_treatment, by = "record_id") |>
+  mutate(
+    riluzole_delay = if_else(
+      is.finite(riluzole_start-age_onset),
+      riluzole_start - age_onset, NA
+    ),
+    tofersen_delay = if_else(
+      is.finite(tofersen_start-age_onset),
+      tofersen_start - age_onset, NA
+    )
+  )
