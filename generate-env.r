@@ -18,7 +18,8 @@ rix::rix(
            "rix",
            "survival",
            "tidyverse",
-           "visdat"
+           "visdat",
+           "webshot2"
          ),
          ide = "positron",
          system_pkgs = NULL,

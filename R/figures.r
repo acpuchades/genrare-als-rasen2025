@@ -18,7 +18,7 @@ custom_scale_fill_brewer <- scale_fill_lancet
 custom_scale_color_brewer <- scale_color_lancet
 
 output_dir <- here("output", "figures")
-dir.create(output_dir, showWarnings = FALSE)
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 vis_miss(baseline_data) +
   theme(
@@ -64,6 +64,77 @@ ggsave(
     bg = "white", width = 10, height = 5, dpi = 300
 )
 
+genetics_data |>
+  summarize(
+    gen_result = as_genetic_result(if_else(
+      any(!is.na(gen_gene)), "Positive", "Negative"
+    )),
+    .by = record_id
+  ) |>
+  left_join(baseline_data, by = "record_id") |>
+  ggplot(aes(gen_result, age_onset, fill = gen_result)) +
+  geom_boxplot() +
+  geom_signif(
+    comparisons = list(c("Positive", "Negative")),
+    map_signif_level = TRUE
+  ) +
+  scale_fill_manual(values = c(
+    Positive = theme_color_primary,
+    Negative = theme_color_secondary
+  )) +
+  labs(
+    x = NULL, y = "Edad de inicio",
+    fill = "Resultado genético"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+ggsave(
+  file.path(output_dir, "age_onset-by-gen_result.png"),
+  bg = "white", width = 10, height = 8, dpi = 300
+)
+
+genetics_data |>
+  summarize(
+    gen_result = as_genetic_result(if_else(
+      any(!is.na(gen_gene)), "Positive", "Negative"
+    )),
+    .by = record_id
+  ) |>
+  left_join(baseline_data, by = "record_id") |>
+  mutate(age_group = age_onset |> cut(
+    breaks = c(0, 18, 30, 40, 50, 60, Inf),
+    labels = c(
+      "0 - 18", "19 - 30", "31 - 40",
+      "41 - 50", "51 - 60", "> 60"
+    )
+  )) |>
+  drop_na(age_group, gen_result) |>
+  ggplot(aes(age_group, fill = gen_result)) +
+  geom_bar(position = "fill") +
+  geom_text(
+    aes(
+      label = after_stat(count / tapply(count, x, sum)[x]) |>
+        scales::percent(accuracy = 1)
+    ),
+    stat = "count", position = position_fill(vjust = 0.5),
+    color = "white", subset = ~gen_result == "Positive"
+  ) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c(
+    Positive = theme_color_primary,
+    Negative = theme_color_secondary
+  )) +
+  labs(
+    x = "Edad de inicio",
+    fill = "Resultado genético"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+ggsave(
+  file.path(output_dir, "gen_positive-by-age_group.png"),
+  bg = "white", width = 10, height = 8, dpi = 300
+)
+
 bind_rows(
   baseline_data |> mutate(gene = "C9orf72", gene_status = c9_status),
   baseline_data |> mutate(gene = "SOD1", gene_status = sod1_status),
@@ -98,20 +169,62 @@ ggsave(
   bg = "white", dpi = 300, width = 10, height = 10
 )
 
+
+baseline_data |>
+  drop_na(sex) |>
+  ggplot(aes(x = "", fill = sex)) +
+  geom_bar(color = "white", width = 0.5) +
+  geom_text(
+    aes(x = 1, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "white", size = 6, stat = "count", hjust = 0.5,
+    position = position_stack(vjust = 0.5)
+  ) +
+  coord_polar("y", start = 0) +
+  custom_scale_fill_brewer() +
+  labs(fill = "Sexo") +
+  theme_void() +
+  theme(legend.position = "none")
+ggsave(
+  file.path(output_dir, "distribution-sex.png"),
+  bg = "white", width = 10, height = 10, dpi = 300
+)
+
+baseline_data |>
+  drop_na(als_fam_hist_type) |>
+  ggplot(aes(x = "", fill = als_fam_hist_type)) +
+  geom_bar(color = "white", width = 0.5) +
+  geom_text(
+    aes(x = 1, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "white", size = 6, stat = "count", hjust = 0.5,
+    position = position_stack(vjust = 0.5), vjust = 0.5
+  ) +
+  coord_polar("y", start = 0, clip = "off") +
+  custom_scale_fill_brewer() +
+  labs(fill = "Historia familiar") +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = unit(c(1, 3, 1, 3), "cm")
+  )
+ggsave(
+  file.path(output_dir, "distribution-als_fam_hist_type.png"),
+  bg = "white", width = 10, height = 8, dpi = 300
+)
+
 baseline_data |>
   drop_na(site_of_onset) |>
   ggplot(aes(x = "", fill = site_of_onset)) +
   geom_bar(color = "white", width = 0.5) +
   geom_text(
-    aes(x = 1.35, label = after_stat(str_glue("{count} ({round(count/sum(count) * 100)}%)"))),
-    size = 5, stat = "count", hjust = 0.5,
+    aes(x = 1, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "white", size = 6, stat = "count", hjust = 0.5,
     position = position_stack(vjust = 0.5)
   ) +
   coord_polar("y", start = 0) +
   custom_scale_fill_brewer() +
   labs(fill = "Categoría de inicio") +
   theme_void() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "none")
 ggsave(
   file.path(output_dir, "distribution-site_of_onset.png"),
   bg = "white", width = 10, height = 10, dpi = 300
@@ -123,34 +236,151 @@ baseline_data |>
   ggplot(aes(x = "", fill = final_diagnosis)) +
   geom_bar(color = "white", width = 0.5) +
   geom_text(
-    aes(x = 1.35, label = after_stat(str_glue("{count} ({round(count/sum(count) * 100)}%)"))),
-    size = 5, stat = "count", hjust = 0,
+    aes(x = 1.4, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "black", size = 6, stat = "count", hjust = 0,
     position = position_stack(vjust = 0.5),
   ) +
-  coord_polar("y", start = 0) +
+  coord_polar("y", start = 0, clip = "off") +
   custom_scale_fill_brewer() +
   labs(fill = "Fenotipo") +
   theme_void() +
-  theme(legend.position = "bottom")
+  theme(
+    legend.position = "none",
+    plot.margin = unit(c(1, 3, 1, 3), "cm")
+  )
 ggsave(
   file.path(output_dir, "distribution-final_diagnosis.png"),
-  bg = "white", width = 10, height = 10, dpi = 300
+  bg = "white", width = 10, height = 8, dpi = 300
+)
+
+baseline_data |>
+  semi_join(
+    genetics_data |> drop_na(gen_gene),
+    by = "record_id"
+  ) |>
+  drop_na(als_fam_hist_type) |>
+  ggplot(aes(x = "", fill = als_fam_hist_type)) +
+  geom_bar(color = "white", width = 1) +
+  geom_text(
+    aes(x = 1, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "white", size = 5, stat = "count", hjust = 0.5,
+    position = position_stack(vjust = 0.5)
+  ) +
+  coord_polar("y", start = 0) +
+  custom_scale_fill_brewer() +
+  labs(fill = "Historia familiar") +
+  theme_void() +
+  theme(legend.position = "none")
+ggsave(
+  file.path(output_dir, "distribution-gen_gene-als_fam_hist_type.png"),
+  bg = "white", width = 10, height = 8, dpi = 300
+)
+
+genetics_data |>
+  drop_na(gen_gene) |>
+  summarize(
+    gen_gene = case_when(
+      n_distinct(gen_gene) > 1 ~ "Multiple genes",
+      first(gen_gene) %in% c("C9orf72", "SOD1", "TARDBP", "FUS") ~ first(gen_gene),
+      TRUE ~ "Other genes"
+    ) |>
+      factor(levels = c(
+        "C9orf72", "SOD1", "TARDBP", "FUS", "Other genes", "Multiple genes"
+      )),
+    .by = record_id
+  ) |>
+  ggplot(aes(x = "", fill = gen_gene)) +
+  geom_bar(color = "white", width = 1) +
+  geom_text(
+    aes(x = 1.7, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "black", size = 3, stat = "count", hjust = 0.5,
+    position = position_stack(vjust = 0.5)
+  ) +
+  coord_polar("y", start = 0) +
+  custom_scale_fill_brewer() +
+  labs(fill = "Estudio genético") +
+  theme_void() +
+  theme(legend.position = "none")
+ggsave(
+  file.path(output_dir, "distribution-gen_gene.png"),
+  bg = "white", width = 10, height = 8, dpi = 300
+)
+
+baseline_data |>
+  filter(als_fam_hist_type == "Familial ALS") |>
+  inner_join(
+    genetics_data |> transmute(
+      record_id,
+      gen_gene = case_when(
+        gen_gene %in% c("C9orf72", "SOD1", "TARDBP", "FUS") ~ gen_gene,
+        !is.na(gen_gene) ~ "Other genes",
+        TRUE ~ "None found"
+      ) |> factor(levels = c(
+        "C9orf72", "SOD1", "TARDBP", "FUS",
+        "Other genes", "None found"
+      ))
+    ),
+    by = "record_id"
+  ) |>
+  ggplot(aes(x = "", fill = gen_gene)) +
+  geom_bar(color = "white", width = 1) +
+  geom_text(
+    aes(x = 1.7, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "black", size = 4, stat = "count", hjust = 0.5,
+    position = position_stack(vjust = 0.5)
+  ) +
+  coord_polar("y", start = 0) +
+  custom_scale_fill_brewer() +
+  labs(fill = "Estudio genético") +
+  theme_void() +
+  theme(legend.position = "none")
+ggsave(
+  file.path(output_dir, "distribution-fALS-gen_gene.png"),
+  bg = "white", width = 10, height = 8, dpi = 300
+)
+
+demographics_data |>
+  filter(status == "Alive") |>
+  drop_na(gast_carrier_dic) |>
+  ggplot(aes(x = "", fill = gast_carrier_dic)) +
+  geom_bar(color = "white", width = 1) +
+  geom_text(
+    aes(x = 1.2, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "white", size = 5, stat = "count", hjust = 0.5,
+    position = position_stack(vjust = 0.5)
+  ) +
+  coord_polar("y", start = 0) +
+  custom_scale_fill_brewer() +
+  labs(fill = "Gastrostomía") +
+  theme_void() +
+  theme(legend.position = "none")
+ggsave(
+  file.path(output_dir, "distribution-gast_carrier.png"),
+  bg = "white", width = 10, height = 8, dpi = 300
 )
 
 kings_data |>
   slice_max(kings_age, n = 1, by = "record_id", with_ties = FALSE) |>
   semi_join(baseline_data |> filter(status == "Alive"), by = "record_id") |>
-  ggplot(aes(x = "", fill = as.character(kings_total))) +
+  mutate(across(kings_total, ~.x |>
+                               case_match(
+                                 1 ~ "I",
+                                 2 ~ "II",
+                                 3 ~ "III",
+                                 4 ~ "IV"
+                               ) |> fct_drop())) |>
+  drop_na(kings_total) |>
+  ggplot(aes(x = "", fill = kings_total)) +
   geom_bar(color = "white", size = 0.5) +
   geom_text(
-    aes(x = 1.6, label = after_stat(str_glue("{count} ({round(count/sum(count) * 100)}%)"))),
-    size = 4, stat = "count", hjust = 0.5, position = position_stack(vjust = 0.5),
+    aes(x = 1, label = after_stat(str_glue("{fill}\n{count} ({round(count/sum(count) * 100)}%)"))),
+    color = "white", size = 5, stat = "count", hjust = 0.5, position = position_stack(vjust = 0.5),
   ) +
   coord_polar("y", start = 0) +
   labs(fill = "King's") +
   custom_scale_fill_brewer() +
   theme_void() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "none")
 ggsave(
   file.path(output_dir, "estado-actual-by-kings.png"),
   bg = "white", width = 10, height = 10, dpi = 300
@@ -168,10 +398,11 @@ ggsurvfit(overall_survival.fit, color = theme_color_primary) +
   annotate("text", x = overall_survival.med + 0.25, y = 0.5,
            label = str_c(round(overall_survival.med, 1), " años"),
            hjust = 0, vjust = -0.5) +
-  scale_ggsurvfit()
+  scale_ggsurvfit() +
+  theme_minimal()
 ggsave(
     file.path(output_dir, "survival.png"),
-    width = 10, height = 7, dpi = 300
+    bg = "white", width = 10, height = 7, dpi = 300
 )
 
 baseline_data |>
@@ -262,24 +493,33 @@ ggsave(
 )
 
 baseline_data |>
-    filter(age >= age_onset) |>
-    with(survfit2(Surv(age-age_onset, status == "Deceased") ~ c9_status)) |>
-    ggsurvfit() +
-    add_confidence_interval() +
-    add_legend_title("C9orf72") +
-    add_pvalue("annotation") +
-    scale_ggsurvfit() +
-    scale_color_manual(values = c(theme_color_primary, theme_color_secondary)) +
-    scale_fill_manual(values = c(theme_color_primary, theme_color_secondary)) +
-    theme_minimal() +
-    theme(legend.position = "bottom")
+  filter(
+    age >= age_onset,
+    final_diagnosis == "Classical ALS",
+    is.na(sod1_status) | sod1_status == "Negative"
+  ) |>
+  with(survfit2(Surv(age-age_onset, status == "Deceased") ~ c9_status)) |>
+  ggsurvfit() +
+  add_confidence_interval() +
+  add_legend_title("C9orf72") +
+  scale_ggsurvfit() +
+  scale_x_continuous(limits = c(0, 10)) +
+  scale_color_manual(values = c(theme_color_primary, theme_color_secondary)) +
+  scale_fill_manual(values = c(theme_color_primary, theme_color_secondary)) +
+  add_pvalue("annotation") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
 ggsave(
     file.path(output_dir, "survival-by-c9_status.png"),
     bg = "white", width = 10, height = 7, dpi = 300
 )
 
 baseline_data |>
-    filter(age >= age_onset) |>
+  filter(
+    age >= age_onset,
+    final_diagnosis == "Classical ALS",
+    is.na(c9_status) | c9_status == "Negative"
+  ) |>
     with(survfit2(Surv(age-age_onset, status == "Deceased") ~ sod1_status)) |>
     ggsurvfit() +
     add_confidence_interval() +
@@ -298,7 +538,8 @@ ggsave(
 baseline_data |>
   filter(
     age >= age_onset,
-    c9_status == "Negative"
+    final_diagnosis == "Classical ALS",
+    is.na(c9_status) | c9_status == "Negative"
   ) |>
   mutate(
     group = factor(case_when(
@@ -311,8 +552,9 @@ baseline_data |>
   ggsurvfit() +
   add_confidence_interval() +
   add_legend_title("SOD1") +
-  add_pvalue("annotation") +
   scale_ggsurvfit() +
+  scale_x_continuous(limits = c(0, 10)) +
+  add_pvalue("annotation") +
   custom_scale_color_brewer() +
   custom_scale_fill_brewer() +
   theme_minimal() +
@@ -361,6 +603,7 @@ ggsave(
 alsfrs_data |>
   filter(years_since_onset <= 10) |>
   left_join(baseline_data, by = "record_id") |>
+  drop_na(progression_category) |>
   mutate(across(progression_category, ~factor(.x, levels = c("SP", "FP", "NP")))) |>
   ggplot(aes(
       years_since_onset, alsfrs_total, group = record_id,

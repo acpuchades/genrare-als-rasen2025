@@ -3,14 +3,15 @@ library(here)
 library(janitor)
 library(readr)
 library(stringr)
+library(tidyr)
 
 data_dir <- here("data")
 alsfrs_data_path <- file.path(data_dir, "02_sen2025_alsfrs.csv")
 cognitive_data_path <- file.path(data_dir, "06_sen2025_cognitive.csv")
-demographics_data_path <- file.path(data_dir, "01_sen2025_basico_mod.csv")
-genetics_data_path <- file.path(data_dir, "10_sen2025_genet.csv")
+demographics_data_path <- file.path(data_dir, "01_sen2025_basico.csv")
+genetics_data_path <- file.path(data_dir, "11_sen2025_genet.csv")
 kings_data_path <- file.path(data_dir, "04_sen2025_kings.csv")
-niv_data_path <- file.path(data_dir, "11_sen2025_ventilation.csv")
+niv_data_path <- file.path(data_dir, "12_sen2025_ventilation.csv")
 treatment_data_path <- file.path(data_dir, "08_sen2025_trmnt.csv")
 
 as_als_diagnosis <- function(x) {
@@ -39,6 +40,10 @@ as_eer_category <- function(x) {
         )
 }
 
+as_family_history_category <- function(x) {
+  factor(x, levels = c("Sporadic ALS", "Familial ALS"))
+}
+
 as_genetic_result <- function(x) {
   factor(x, levels = c("Negative", "Positive"))
 }
@@ -56,7 +61,11 @@ as_vital_status <- function(x) {
 }
 
 as_yesno_category <- function(x) {
-  factor(x, levels = c("Sí", "No"))
+  case_when(
+    x %in% c("Sí", "Yes", TRUE) ~ "Sí",
+    x %in% c("No", FALSE) ~ "No"
+  ) |>
+    factor(levels = c("No", "Sí"))
 }
 
 demographics_data <- read_csv(demographics_data_path) |>
@@ -64,9 +73,10 @@ demographics_data <- read_csv(demographics_data_path) |>
     mutate(
         across(sex, as_sex),
         across(status, as_vital_status),
+        across(als_fam_hist_type, as_family_history_category),
         across(eer_category, as_eer_category),
         across(final_diagnosis, as_als_diagnosis),
-        across(gold_coast_crit_yn, as_yesno_category),
+        across(c(ends_with("_yn"), ends_with("_dic")), as_yesno_category),
         site_of_onset = as_onset_category(case_when(
         (
             !is.na(als_symp_bulbar) +
@@ -121,6 +131,11 @@ baseline_alsfrs <- alsfrs_data |>
         ) |> factor(levels = c("SP", "NP", "FP"))
     )
 
+baseline_ecas <- cognitive_data |>
+  drop_na(ecas_als_specific, ecas_als_non_specific, ecas_total) |>
+  slice_min(cognitive_age, by = record_id, n = 1, with_ties = FALSE) |>
+  select(record_id, ecas_als_specific, ecas_als_non_specific, ecas_total)
+
 baseline_genetics <- genetics_data |>
     summarize(
         c9_status = if_else(
@@ -153,13 +168,22 @@ baseline_treatment <- treatment_data |>
   summarize(
         treated_riluzole = any(treat_type == "Riluzole", na.rm = TRUE),
         treated_tofersen = any(treat_type == "Tofersen", na.rm = TRUE),
-        riluzole_start = min(med_start_age[which(treat_type == "Riluzole")]),
-        tofersen_start = min(med_start_age[which(treat_type == "Tofersen")]),
+        riluzole_start = suppressWarnings(if_else(
+          treated_riluzole,
+          min(med_start_age[which(treat_type == "Riluzole")]),
+          NA
+        )),
+        tofersen_start = suppressWarnings(if_else(
+          treated_tofersen,
+          min(med_start_age[which(treat_type == "Tofersen")]),
+          NA
+        )),
         .by = record_id
     )
 
 baseline_data <- demographics_data |>
   left_join(baseline_alsfrs, by = "record_id") |>
+  left_join(baseline_ecas, by = "record_id") |>
   left_join(baseline_genetics, by = "record_id") |>
   left_join(baseline_treatment, by = "record_id") |>
   mutate(
