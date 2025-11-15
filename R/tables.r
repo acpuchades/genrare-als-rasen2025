@@ -5,7 +5,7 @@ library(survival)
 
 source("R/data.r")
 
-output_format <- "png"
+output_format <- "docx"
 output_dir <- here("output", "tables")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -80,25 +80,29 @@ baseline_data |>
     as_gt() |>
     gtsave(file.path(output_dir, str_glue("summary-by-fus_status.{output_format}")))
 
-survival_cox.fit <- coxph(
+c9orf72_cox.fit <- coxph(
   Surv(time, status == "Deceased") ~
-    sex + age_onset + log(diagnostic_delay_yrs) +
-    I(baseline_deltafs^(1/3)) +
-    site_of_onset + c9_status,
+    sex + age_onset + site_of_onset + c9_status,
   data = baseline_data |>
-    filter(age > age_onset, diagnostic_delay_yrs > 0) |>
+    filter(
+      age > age_onset,
+      is.na(sod1_status) | sod1_status == "Negative"
+    ) |>
     mutate(time = age - age_onset),
 )
 
-tbl_regression(survival_cox.fit, exponentiate = TRUE) |>
+tbl_regression(c9orf72_cox.fit, exponentiate = TRUE) |>
   as_gt() |>
-  gtsave(file.path(output_dir, str_glue("survival_coxph.{output_format}")))
+  gtsave(file.path(output_dir, str_glue("c9orf72_coxph.{output_format}")))
 
 tofersen_cox.fit <- coxph(
   Surv(age-age_onset, status == "Deceased") ~
     age_onset + progression_category + treated_tofersen,
   data = baseline_data |>
-    filter(c9_status == "Negative", sod1_status == "Positive")
+    filter(
+      is.na(c9_status) | c9_status == "Negative",
+      sod1_status == "Positive"
+    )
 )
 
 tbl_regression(tofersen_cox.fit, exponentiate = TRUE) |>
